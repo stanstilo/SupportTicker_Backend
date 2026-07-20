@@ -1,0 +1,27 @@
+{
+  "name": "helix-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Helix Service API — Fastify + SQLite backend",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "start": "tsx src/index.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/cors": "^10.0.2",
+    "@fastify/jwt": "^9.0.3",
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^11.8.1",
+    "fastify": "^5.2.1",
+    "jose": "^6.2.3"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4"
+  }
+}
