@@ -23,7 +23,7 @@ declare module 'fastify' {
   }
 }
 
-const JWT_SECRET = process.env.JWT_SECRET ?? 'helix-dev-secret-change-me-in-production'
+const JWT_SECRET = process.env.JWT_SECRET ?? 'support-ticker-dev-secret-change-me-in-production'
 
 /** Registers JWT support and an `authenticate` preHandler for guarded routes. */
 export async function registerAuth(app: FastifyInstance): Promise<void> {

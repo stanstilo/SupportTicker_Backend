@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createUser, findUserByEmail, getUserById, publicUser } from '../repo'
 import { hashPassword, verifyPassword } from '../auth'
 import { isFirebaseConfigured, verifyFirebaseToken } from '../firebase'
+import { SERVICE_LINES, type ServiceLine } from '../types'
 
 const EMAIL_RE = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const AVATAR = ['#2f6bff', '#0f8a5f', '#a97bff', '#c4820b', '#d64a41', '#1f9d63', '#0e8bab']
@@ -18,6 +19,7 @@ interface SignupBody {
   company?: string
   email?: string
   password?: string
+  department?: string
 }
 interface LoginBody {
   email?: string
@@ -26,9 +28,13 @@ interface LoginBody {
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Body: SignupBody }>('/signup', async (req, reply) => {
-    const { name, company, email, password } = req.body ?? {}
+    const { name, company, email, password, department } = req.body ?? {}
     if (!name?.trim() || !company?.trim() || !EMAIL_RE.test(email ?? '') || (password ?? '').length < 8) {
       return reply.code(400).send({ error: 'Please provide a name, company, valid email and an 8+ character password.' })
+    }
+    // Department is optional but, when given, must be a known service line.
+    if (department && !SERVICE_LINES.includes(department as ServiceLine)) {
+      return reply.code(400).send({ error: 'Unknown service department.' })
     }
     const normalized = email!.trim().toLowerCase()
     if (findUserByEmail(normalized)) {
@@ -40,6 +46,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       email: normalized,
       passwordHash: await hashPassword(password!),
       avatarColor: avatarColor(name.trim()),
+      department: (department as ServiceLine) || null,
     })
     const token = app.jwt.sign({ sub: user.id, email: user.email, name: user.name, role: user.role })
     return reply.code(201).send({ token, user: publicUser(user) })
@@ -64,8 +71,8 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   /**
    * Hybrid-bridge sign-in: the client authenticates with Firebase (Google,
    * email link, phone, …) and posts its Firebase ID token here. We verify the
-   * token against Google's public keys, then find-or-create the matching Helix
-   * user and issue OUR app JWT — so every downstream API keeps working exactly
+   * token against Google's public keys, then find-or-create the matching
+   * Support Ticker user and issue OUR app JWT — so every downstream API keeps working exactly
    * as it does for password logins. Federated identity in, app session out.
    */
   app.post<{ Body: { idToken?: string } }>('/firebase', async (req, reply) => {
@@ -85,13 +92,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
 
     // Phone-only sign-ins have no email — synthesise a stable local identifier
     // (under the org domain) so the user maps to a single account across sessions.
-    const domain = (process.env.ORG_EMAIL_DOMAIN ?? 'helix.app').toLowerCase()
+    const domain = (process.env.ORG_EMAIL_DOMAIN ?? 'gifsonservices.com').toLowerCase()
     const digits = identity.phoneNumber?.replace(/\D/g, '')
     const email = identity.email ?? (digits ? `${digits}@phone.${domain}` : `${identity.uid}@firebase.${domain}`)
     const displayName =
       identity.name?.trim() ||
       (identity.email ? identity.email.split('@')[0] : undefined) ||
-      (identity.phoneNumber ? `Member ${digits?.slice(-4)}` : 'Helix Member')
+      (identity.phoneNumber ? `Member ${digits?.slice(-4)}` : `${process.env.ORG_NAME ?? 'GifsonServices'} Member`)
 
     let user = findUserByEmail(email)
     if (!user) {

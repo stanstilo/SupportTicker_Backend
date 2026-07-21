@@ -4,7 +4,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-const DB_PATH = process.env.DB_PATH ?? join(here, '..', 'data', 'helix.db')
+const DB_PATH = process.env.DB_PATH ?? join(here, '..', 'data', 'support-ticker.db')
 
 mkdirSync(dirname(DB_PATH), { recursive: true })
 
@@ -117,6 +117,11 @@ function migrate(): void {
   if (!userCols.some((c) => c.name === 'role')) {
     db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'agent'`)
   }
+  // Service department a user belongs to (a ServiceLine value); drives which
+  // requests they can be assigned. Nullable — management/legacy accounts have none.
+  if (!userCols.some((c) => c.name === 'department')) {
+    db.exec(`ALTER TABLE users ADD COLUMN department TEXT`)
+  }
 
   const tcols = () => db.prepare(`PRAGMA table_info(tickets)`).all() as { name: string; notnull: number }[]
   const has = (n: string) => tcols().some((c) => c.name === n)
@@ -128,6 +133,9 @@ function migrate(): void {
   }
   if (!has('on_behalf')) db.exec(`ALTER TABLE tickets ADD COLUMN on_behalf INTEGER NOT NULL DEFAULT 0`)
   if (!has('assign_to_me')) db.exec(`ALTER TABLE tickets ADD COLUMN assign_to_me INTEGER NOT NULL DEFAULT 0`)
+  // Data Fabric record id (GUID) for the mirror row created by the UiPath
+  // Helix.DataFabricInsert process — used to write status/assignee back later.
+  if (!has('df_record_id')) db.exec(`ALTER TABLE tickets ADD COLUMN df_record_id TEXT`)
 
   // Make account_id nullable via the FK-safe rebuild procedure. IMPORTANT: never
   // `ALTER TABLE tickets RENAME` — that rewrites child-table foreign keys to the

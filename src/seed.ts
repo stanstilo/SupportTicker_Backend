@@ -107,26 +107,18 @@ export async function seedIfEmpty(): Promise<void> {
   // Admin → Organization) to rebrand. The domain identifies the org's people:
   // anyone@<domain> is an onboarded member, and their requests map to the org.
   const orgName = process.env.ORG_NAME ?? 'GifsonServices'
-  const domain = (process.env.ORG_DOMAIN ?? process.env.ORG_EMAIL_DOMAIN ?? 'gifsonservices').toLowerCase().replace(/^@/, '')
+  const domain = (process.env.ORG_DOMAIN ?? process.env.ORG_EMAIL_DOMAIN ?? 'gifsonservices.com').toLowerCase().replace(/^@/, '')
 
   // Seed the primary organization on first boot (idempotent).
   if (!primaryOrganization()) {
     createOrganization({ name: orgName, domain, makePrimary: true })
   }
 
-  const demoEmail = (process.env.DEMO_EMAIL ?? `demo@${domain}`).toLowerCase()
   const adminEmail = (process.env.ADMIN_EMAIL ?? `admin@${domain}`).toLowerCase()
   const superEmail = (process.env.SUPERADMIN_EMAIL ?? `superadmin@${domain}`).toLowerCase()
   const superPassword = process.env.SUPERADMIN_PASSWORD ?? 'super1234'
 
-  // Always ensure the demo login exists (so it works even on a DB that predates it).
-  if (!findUserByEmail(demoEmail)) {
-    const passwordHash = await hashPassword('demo1234')
-    db.prepare(
-      `INSERT INTO users (id, name, email, company, password_hash, avatar_color, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    ).run(randomUUID(), 'Priya Sharma', demoEmail, orgName, passwordHash, AVATAR[1], '2026-01-04T09:00:00Z')
-  }
+ 
 
   if (!findUserByEmail(adminEmail)) {
     const passwordHash = await hashPassword('admin1234')
@@ -148,7 +140,31 @@ export async function seedIfEmpty(): Promise<void> {
   // Enforce roles idempotently, even for databases seeded before roles existed.
   db.prepare(`UPDATE users SET role = 'superadmin' WHERE email = ?`).run(superEmail)
   db.prepare(`UPDATE users SET role = 'admin' WHERE email = ?`).run(adminEmail)
-  db.prepare(`UPDATE users SET role = 'agent' WHERE email = ?`).run(demoEmail)
+  // db.prepare(`UPDATE users SET role = 'agent' WHERE email = ?`).run(demoEmail)
+
+  // Demo service-department agents so the assignment dropdowns are populated out
+  // of the box (password: agent1234). Real users get their department at sign-up;
+  // these are safe to delete. Idempotent + department kept in sync on re-seed.
+  const AGENTS: [name: string, local: string, department: string, avatar: string][] = [
+    ['Clara Obi', 'clara', 'retail-banking', AVATAR[0]],
+    ['Musa Bello', 'musa', 'retail-banking', AVATAR[1]],
+    ['Ada Eze', 'ada', 'payments', AVATAR[2]],
+    ['Tunde Cole', 'tunde', 'payments', AVATAR[3]],
+    ['Ngozi Ike', 'ngozi', 'lending-mortgages', AVATAR[4]],
+    ['Femi Alabi', 'femi', 'lending-mortgages', AVATAR[5]],
+  ]
+  const agentHash = await hashPassword('agent1234')
+  for (const [name, local, department, avatar] of AGENTS) {
+    const agentEmail = `${local}@${domain}`
+    if (!findUserByEmail(agentEmail)) {
+      db.prepare(
+        `INSERT INTO users (id, name, email, company, password_hash, avatar_color, role, department, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, 'agent', ?, ?)`,
+      ).run(randomUUID(), name, agentEmail, orgName, agentHash, avatar, department, '2026-01-05T09:00:00Z')
+    }
+    // Keep department current even for a pre-existing row.
+    db.prepare(`UPDATE users SET department = ? WHERE email = ?`).run(department, agentEmail)
+  }
 
   if (countTickets() > 0) return
 

@@ -6,8 +6,10 @@ import {
   createTicket,
   deleteTicket,
   getTicket,
+  listAssignable,
   listTickets,
   setAssignee,
+  setDfRecordId,
   setPriority,
   setStatus,
 } from '../repo'
@@ -23,7 +25,13 @@ import {
   type TicketPriority,
   type TicketStatus,
 } from '../types'
-import { enqueueTicket } from '../orchestrator'
+import {
+  assignByDepartment,
+  dataFabricInsert,
+  dataFabricUpdate,
+  enqueueTicket,
+  isOrchestratorConfigured,
+} from '../orchestrator'
 import { canDeleteTicket } from '../permissions'
 import { isAdminRole } from '../types'
 
@@ -87,15 +95,50 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
       })
       .catch((err) => app.log.warn(`Orchestrator enqueue failed for #${ticket.id}: ${err.message}`))
 
+    // Backend-driven orchestration: store the ticket in Data Fabric via the
+    // UiPath insert process, then resolve an assignee by department (write-back
+    // included). Best-effort and fire-and-forget — never blocks/fails creation.
+    if (isOrchestratorConfigured()) {
+      void (async () => {
+        try {
+          const recordId = await dataFabricInsert(ticket)
+          if (!recordId) return
+          setDfRecordId(ticket.id, recordId)
+          app.log.info(`Ticket #${ticket.id} stored in Data Fabric (${recordId})`)
+          const owner = await assignByDepartment(recordId, ticket.serviceLine)
+          if (owner) {
+            setAssignee(ticket.id, owner, 'UiPath')
+            await dataFabricUpdate(recordId, owner, 'pending')
+            app.log.info(`Ticket #${ticket.id} auto-assigned to ${owner} (${ticket.serviceLine})`)
+          } else {
+            app.log.info(`Ticket #${ticket.id}: no ${ticket.serviceLine} agent — escalate/leave unassigned`)
+          }
+        } catch (err) {
+          app.log.warn(`UiPath orchestration failed for #${ticket.id}: ${(err as Error).message}`)
+        }
+      })()
+    }
+
     return reply.code(201).send(ticket)
   })
 
   app.patch<{ Params: { id: string }; Body: { status?: TicketStatus } }>('/:id/status', async (req, reply) => {
     const status = req.body?.status
     if (!status || !STATUSES.includes(status)) return reply.code(400).send({ error: 'Invalid status.' })
-    const ticket = setStatus(Number(req.params.id), status, req.user.name)
-    if (!ticket) return reply.code(404).send({ error: 'Request not found.' })
-    return ticket
+    const existing = getTicket(Number(req.params.id))
+    if (!existing) return reply.code(404).send({ error: 'Request not found.' })
+    // Only the assigned owner (or an admin) may move a request through its lifecycle.
+    if (!isAdminRole(req.user.role) && existing.assignee !== req.user.name) {
+      return reply.code(403).send({ error: 'Only the assigned owner or an admin can change the status.' })
+    }
+    const updated = setStatus(existing.id, status, req.user.name)
+    // Mirror the decision back to the Data Fabric record (best-effort).
+    if (updated?.dfRecordId && isOrchestratorConfigured()) {
+      void dataFabricUpdate(updated.dfRecordId, updated.assignee ?? '', status)
+        .then(() => app.log.info(`Ticket #${updated.id} status '${status}' mirrored to Data Fabric`))
+        .catch((err) => app.log.warn(`Data Fabric write-back failed for #${updated.id}: ${(err as Error).message}`))
+    }
+    return updated
   })
 
   app.patch<{ Params: { id: string }; Body: { priority?: TicketPriority } }>('/:id/priority', async (req, reply) => {
@@ -107,10 +150,25 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
   })
 
   app.patch<{ Params: { id: string }; Body: { assignee?: string | null } }>('/:id/assignee', async (req, reply) => {
-    const assignee = req.body?.assignee ?? null
-    const ticket = setAssignee(Number(req.params.id), assignee ? String(assignee) : null, req.user.name)
-    if (!ticket) return reply.code(404).send({ error: 'Request not found.' })
-    return ticket
+    const raw = req.body?.assignee
+    const assignee = raw && String(raw).trim() ? String(raw).trim() : null
+    const existing = getTicket(Number(req.params.id))
+    if (!existing) return reply.code(404).send({ error: 'Request not found.' })
+
+    const admin = isAdminRole(req.user.role)
+    const isCurrentAssignee = existing.assignee != null && existing.assignee === req.user.name
+    // Admins assign/reassign anyone; the current assignee may hand off to a peer.
+    if (!admin && !isCurrentAssignee) {
+      return reply.code(403).send({ error: 'Only an admin or the current assignee can (re)assign this request.' })
+    }
+    if (!admin && !assignee) {
+      return reply.code(403).send({ error: 'Only an admin can unassign a request.' })
+    }
+    // The new assignee must belong to the request's service department.
+    if (assignee && !listAssignable(existing.serviceLine).some((m) => m.name === assignee)) {
+      return reply.code(422).send({ error: `${assignee} is not a member of the ${existing.serviceLine} department.` })
+    }
+    return setAssignee(existing.id, assignee, req.user.name)
   })
 
   app.delete<{ Params: { id: string } }>('/:id', async (req, reply) => {
@@ -136,6 +194,11 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
       if (!body) return reply.code(400).send({ error: 'Comment body is required.' })
       const ticket = addComment(Number(req.params.id), req.user.name, body, !!req.body?.internal)
       if (!ticket) return reply.code(404).send({ error: 'Request not found.' })
+      // System-driven lifecycle: the assignee's first work-note on a still-pending
+      // request means they've started — auto-advance it to In progress.
+      if (ticket.assignee === req.user.name && ticket.status === 'pending') {
+        return setStatus(ticket.id, 'in_progress', req.user.name)
+      }
       return ticket
     },
   )

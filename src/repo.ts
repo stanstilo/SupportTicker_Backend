@@ -11,6 +11,7 @@ import {
   type Contact,
   type Feedback,
   type NewTicketInput,
+  type ServiceLine,
   type Ticket,
   type TicketPriority,
   type TicketStatus,
@@ -114,6 +115,7 @@ export function createUser(input: {
   passwordHash: string
   avatarColor: string
   role?: UserRole
+  department?: ServiceLine | null
 }): UserRecord {
   const user: UserRecord = {
     id: randomUUID(),
@@ -123,11 +125,12 @@ export function createUser(input: {
     passwordHash: input.passwordHash,
     avatarColor: input.avatarColor,
     role: input.role ?? 'agent',
+    department: input.department ?? null,
     createdAt: now(),
   }
   db.prepare(
-    `INSERT INTO users (id, name, email, company, password_hash, avatar_color, role, created_at)
-     VALUES (@id, @name, @email, @company, @passwordHash, @avatarColor, @role, @createdAt)`,
+    `INSERT INTO users (id, name, email, company, password_hash, avatar_color, role, department, created_at)
+     VALUES (@id, @name, @email, @company, @passwordHash, @avatarColor, @role, @department, @createdAt)`,
   ).run(user)
   return user
 }
@@ -142,6 +145,7 @@ function rowToUser(row: Record<string, unknown> | undefined): UserRecord | undef
     passwordHash: row.password_hash as string,
     avatarColor: row.avatar_color as string,
     role: (row.role as UserRole) ?? 'agent',
+    department: (row.department as ServiceLine | null) ?? null,
     createdAt: row.created_at as string,
   }
 }
@@ -169,6 +173,7 @@ function rowToSummary(row: Record<string, unknown>): UserSummary {
     company: row.company as string,
     avatarColor: row.avatar_color as string,
     role: (row.role as UserRole) ?? 'agent',
+    department: (row.department as ServiceLine | null) ?? null,
     createdAt: row.created_at as string,
   }
 }
@@ -190,8 +195,34 @@ export function setUserRole(id: string, role: UserRole): UserSummary | undefined
   return getUserSummary(id)
 }
 
+/** Set (or clear) a user's service department. Returns the updated summary. */
+export function setUserDepartment(id: string, department: ServiceLine | null): UserSummary | undefined {
+  const result = db.prepare('UPDATE users SET department = ? WHERE id = ?').run(department, id)
+  if (result.changes === 0) return undefined
+  return getUserSummary(id)
+}
+
+/** Members of a given service department — the pool a request in that service
+ *  line can be assigned to. Used by both admin assignment and peer hand-off. */
+export function listAssignable(department: ServiceLine): Pick<UserSummary, 'name' | 'email' | 'avatarColor' | 'department'>[] {
+  return (
+    db.prepare('SELECT name, email, avatar_color, department FROM users WHERE department = ? ORDER BY name').all(department) as Record<string, unknown>[]
+  ).map((r) => ({
+    name: r.name as string,
+    email: r.email as string,
+    avatarColor: r.avatar_color as string,
+    department: (r.department as ServiceLine | null) ?? null,
+  }))
+}
+
 export function countUsersByRole(role: UserRole): number {
   return (db.prepare('SELECT COUNT(*) AS n FROM users WHERE role = ?').get(role) as { n: number }).n
+}
+
+/** Remove a user. Returns true if a row was deleted. Ticket attribution is
+ * free-text (submitted_by/assignee/author), so history survives the delete. */
+export function deleteUser(id: string): boolean {
+  return db.prepare('DELETE FROM users WHERE id = ?').run(id).changes > 0
 }
 
 /* --------------------------------------------------------- accounts/contacts */
@@ -292,6 +323,7 @@ function rowToTicket(row: Record<string, unknown>): Ticket {
     submittedBy: (row.submitted_by as string) ?? null,
     onBehalf: !!row.on_behalf,
     assignToMe: !!row.assign_to_me,
+    dfRecordId: (row.df_record_id as string) ?? null,
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
     slaDueAt: row.sla_due_at as string,
@@ -402,10 +434,28 @@ export function setPriority(id: number, priority: TicketPriority, actor: string)
   return getTicket(id)
 }
 
+/** Persist the Data Fabric mirror record id (from the UiPath insert process). */
+export function setDfRecordId(id: number, dfRecordId: string): void {
+  db.prepare('UPDATE tickets SET df_record_id = ? WHERE id = ?').run(dfRecordId, id)
+}
+
 export function setAssignee(id: number, assignee: string | null, actor: string): Ticket | undefined {
-  if (!getTicket(id)) return undefined
+  const current = getTicket(id)
+  if (!current) return undefined
   db.prepare('UPDATE tickets SET assignee = ? WHERE id = ?').run(assignee, id)
   addActivity(id, 'assignment', actor, assignee ? `Assigned to ${assignee}.` : 'Unassigned.')
+
+  // System-driven lifecycle: assigning a person means "assigned, not yet started"
+  // (pending); unassigning returns it to the open pool. A reassignment resets an
+  // in-progress request to pending (the new owner hasn't started). Terminal
+  // states (resolved/closed/declined) are left untouched.
+  if (['open', 'pending', 'in_progress'].includes(current.status)) {
+    const next: TicketStatus = assignee ? 'pending' : 'open'
+    if (next !== current.status) {
+      db.prepare('UPDATE tickets SET status = ? WHERE id = ?').run(next, id)
+      addActivity(id, 'status', actor, `Changed status to ${STATUS_LABELS[next]}.`)
+    }
+  }
   touch(id)
   return getTicket(id)
 }

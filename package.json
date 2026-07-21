@@ -1,9 +1,9 @@
 {
-  "name": "helix-server",
+  "name": "support-ticker-server",
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "description": "Helix Service API — Fastify + SQLite backend",
+  "description": "Support Ticker API — Fastify + SQLite backend",
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",

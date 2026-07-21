@@ -117,6 +117,9 @@ export interface Ticket {
   createdAt: string
   updatedAt: string
   slaDueAt: string
+  /** Data Fabric mirror record id (GUID) created by the UiPath insert process;
+   *  null until the backend-triggered orchestration stores the record. */
+  dfRecordId: string | null
   /** Organization this request maps to, by requester/submitter email domain
    *  (null when it doesn't belong to a registered org). Computed on read. */
   organization: string | null
@@ -186,6 +189,9 @@ export interface AuthUser {
   company: string
   avatarColor: string
   role: UserRole
+  /** The service department this user belongs to (drives request assignment).
+   *  Null for management accounts or users onboarded before departments. */
+  department: ServiceLine | null
   createdAt: string
 }
 
