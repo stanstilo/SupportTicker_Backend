@@ -11,7 +11,12 @@
       "Bash(PYTHONIOENCODING=utf-8 python -c \"import lexicon; L=lexicon.Lexicon.load_default\\(\\); print\\('ndewo:', L.ipa_for_text\\('ig','Ndewo'\\)\\); print\\('phrase Ọ dị mma:', L.ipa_for_text\\('ig','Ọ dị mma'\\)\\); print\\('per-word stitch \\(biko ndewo\\):', L.ipa_for_text\\('ig','Biko Ndewo'\\)\\); print\\('unknown:', L.ipa_for_text\\('ig','xyzzy foobar'\\)\\); import engine; print\\('espeak bin:', engine.espeak_bin\\(\\)\\); r=engine.Engine\\(L\\).synthesize\\('Ndewo','ig'\\); print\\('synth ig ->', {k:\\('<audio>' if k=='audioBase64' and v else v\\) for k,v in r.to_dict\\(\\).items\\(\\)}\\)\")",
       "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('deps:', JSON.stringify\\(p.dependencies,null,1\\)\\)\")",
       "Bash(node -e \"const p=require\\('./node_modules/libsql/package.json'\\); console.log\\('main:',p.main,'| types:',p.types||p.typings,'| exports:',JSON.stringify\\(p.exports\\)\\)\")",
-      "Bash(node -e \"const D=require\\('libsql'\\); const d=new D\\(':memory:'\\); d.exec\\('create table t\\(x\\)'\\); d.prepare\\('insert into t values\\(?\\)'\\).run\\(1\\); console.log\\('libsql better-sqlite3 API OK, rows:', d.prepare\\('select count\\(*\\) c from t'\\).get\\(\\).c\\); if\\(typeof d.pragma==='function'\\){d.pragma\\('journal_mode=WAL'\\);console.log\\('pragma OK'\\)}\")"
+      "Bash(node -e \"const D=require\\('libsql'\\); const d=new D\\(':memory:'\\); d.exec\\('create table t\\(x\\)'\\); d.prepare\\('insert into t values\\(?\\)'\\).run\\(1\\); console.log\\('libsql better-sqlite3 API OK, rows:', d.prepare\\('select count\\(*\\) c from t'\\).get\\(\\).c\\); if\\(typeof d.pragma==='function'\\){d.pragma\\('journal_mode=WAL'\\);console.log\\('pragma OK'\\)}\")",
+      "Bash(node -e \"const p=require\\('./node_modules/libsql/package.json'\\); console.log\\(JSON.stringify\\(p.optionalDependencies,null,1\\)\\)\")",
+      "Bash(node -e \"const l=require\\('./package-lock.json'\\); const k='node_modules/@libsql/linux-x64-gnu'; const p=l.packages[k]; console.log\\(k, p?\\('os='+p.os+' cpu='+p.cpu+' optional='+p.optional\\):'MISSING'\\)\")",
+      "Bash(node -e \"const l=require\\('./package-lock.json'\\); const k='node_modules/@libsql/linux-x64-gnu'; const p=l.packages[k]; console.log\\(p?\\('os='+p.os+' cpu='+p.cpu+' optional='+p.optional\\):'MISSING'\\)\")",
+      "Bash(npm audit *)",
+      "Bash(JWT_SECRET=test-secret npx tsx -e ' *)"
     ]
   }
 }
