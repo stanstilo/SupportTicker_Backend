@@ -47,7 +47,7 @@ async function main(): Promise<void> {
   await app.listen({ port: PORT, host: '0.0.0.0' })
 
   if (isOrchestratorConfigured()) {
-    app.log.info(`Orchestrator enqueue ENABLED → queue "${process.env.ORCH_QUEUE_NAME ?? 'SupportTickerNewTickets'}"`)
+    app.log.info(`Orchestrator enqueue ENABLED → queue "${process.env.ORCH_QUEUE_NAME ?? 'HelixNewTickets'}"`)
   } else {
     app.log.warn('Orchestrator enqueue DISABLED — set ORCH_* in .env to trigger the UiPath workflow on submit')
   }

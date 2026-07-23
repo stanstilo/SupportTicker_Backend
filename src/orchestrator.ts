@@ -16,7 +16,7 @@ import type { Ticket } from './types'
  *   ORCH_CLIENT_SECRET external application client secret
  *   ORCH_SCOPE         default "OR.Queues"
  *   ORCH_FOLDER_ID     Orchestrator folder (organization unit) id holding the queue
- *   ORCH_QUEUE_NAME    default "SupportTickerNewTickets"
+ *   ORCH_QUEUE_NAME    default "HelixNewTickets"
  */
 
 interface OrchEnv {
@@ -52,7 +52,7 @@ function readEnv(): OrchEnv | null {
     clientSecret: ORCH_CLIENT_SECRET,
     scope: ORCH_SCOPE ?? 'OR.Queues',
     folderId: ORCH_FOLDER_ID,
-    queueName: ORCH_QUEUE_NAME ?? 'SupportTickerNewTickets',
+    queueName: ORCH_QUEUE_NAME ?? 'HelixNewTickets',
   }
 }
 
@@ -93,46 +93,10 @@ async function getToken(env: OrchEnv, scopeOverride?: string): Promise<string> {
  * record. `Reference = ticketId` lets the queue dedupe re-sends.
  */
 export async function enqueueTicket(ticket: Ticket): Promise<boolean> {
-  const env = readEnv()
-  if (!env) return false
-
-  const token = await getToken(env)
-  const url = `${env.cloudUrl}/${env.org}/${env.tenant}/orchestrator_/odata/Queues/UiPathODataSvc.AddQueueItem`
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-      'X-UIPATH-OrganizationUnitId': env.folderId,
-    },
-    body: JSON.stringify({
-      itemData: {
-        Name: env.queueName,
-        Priority: 'Normal',
-        Reference: String(ticket.id),
-        SpecificContent: {
-          TicketId: String(ticket.id),
-          Subject: ticket.subject,
-          Description: ticket.description,
-          Status: ticket.status,
-          Priority: ticket.priority,
-          ServiceLine: ticket.serviceLine,
-          Channel: ticket.channel,
-          Requester: ticket.requester,
-          RequesterEmail: ticket.requesterEmail,
-          AccountId: ticket.accountId,
-          Tags: ticket.tags.join(','),
-          CreatedAt: ticket.createdAt,
-          Assignee: ticket.assignee ?? '',
-        },
-      },
-    }),
-  })
-  if (!res.ok) {
-    const detail = await res.text().catch(() => '')
-    throw new Error(`AddQueueItem failed (${res.status}) ${detail.slice(0, 200)}`)
-  }
-  return true
+  // Queue-based enqueue for HelixNewTickets is currently disabled because the
+  // HelixNewTickets queue path is not being used. Keep the stub here so the
+  // function can be restored later if needed.
+  return false
 }
 
 /* --------------------------------------------------------------------------

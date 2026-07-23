@@ -29,7 +29,6 @@ import {
   assignByDepartment,
   dataFabricInsert,
   dataFabricUpdate,
-  enqueueTicket,
   isOrchestratorConfigured,
 } from '../orchestrator'
 import { canDeleteTicket } from '../permissions'
@@ -87,13 +86,16 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
       { submittedBy: req.user.email, onBehalf, assignToMe, assignee },
     )
 
-    // App-triggered: enqueue the unassigned request to Orchestrator so a UiPath
-    // robot stores it in Data Fabric. Best-effort — never fails ticket creation.
+    // App-triggered queue enqueue is disabled because the HelixNewTickets
+    // queue path is not being used. The backend still uses direct UiPath
+    // orchestration for Data Fabric insert/update.
+    /*
     enqueueTicket(ticket)
       .then((sent) => {
         if (sent) app.log.info(`Ticket #${ticket.id} enqueued to Orchestrator`)
       })
       .catch((err) => app.log.warn(`Orchestrator enqueue failed for #${ticket.id}: ${err.message}`))
+    */
 
     // Backend-driven orchestration: store the ticket in Data Fabric via the
     // UiPath insert process, then resolve an assignee by department (write-back
