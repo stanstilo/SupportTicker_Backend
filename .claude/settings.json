@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(espeak-ng --version)",
+      "Bash(python -c \"import phonemizer; print\\('phonemizer', phonemizer.__version__\\)\")",
+      "Bash(espeak-ng --voices)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"EXIT: $?\")",
+      "Bash(python -m py_compile engine.py lexicon.py app.py bootstrap_ipa.py)",
+      "Bash(python -c \"import lexicon; L=lexicon.Lexicon.load_default\\(\\); print\\('langs',L.languages\\(\\)\\); print\\('ig ndewo ->', L.ipa_for_text\\('ig','Ndewo'\\)\\); print\\('ig phrase ->', L.ipa_for_text\\('ig','Ọ dị mma'\\)\\); print\\('ig unknown ->', L.ipa_for_text\\('ig','xyzzy foobar'\\)\\)\")",
+      "Bash(PYTHONIOENCODING=utf-8 python -c \"import lexicon; L=lexicon.Lexicon.load_default\\(\\); print\\('ndewo:', L.ipa_for_text\\('ig','Ndewo'\\)\\); print\\('phrase Ọ dị mma:', L.ipa_for_text\\('ig','Ọ dị mma'\\)\\); print\\('per-word stitch \\(biko ndewo\\):', L.ipa_for_text\\('ig','Biko Ndewo'\\)\\); print\\('unknown:', L.ipa_for_text\\('ig','xyzzy foobar'\\)\\); import engine; print\\('espeak bin:', engine.espeak_bin\\(\\)\\); r=engine.Engine\\(L\\).synthesize\\('Ndewo','ig'\\); print\\('synth ig ->', {k:\\('<audio>' if k=='audioBase64' and v else v\\) for k,v in r.to_dict\\(\\).items\\(\\)}\\)\")"
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+# Yoruba (yo) IPA lexicon — <surface form>\t<IPA>
+# Seed entries. Yoruba is tonal (do/re/mi high-mid-low); keep tone diacritics.
+# Recent espeak-ng builds ship a `yo` voice — when present the engine uses it
+# directly (Tier 1) and these entries mainly feed the SSML/bootstrap output.
+bawo	bàˈwó
+báwo ni	báwo ni
+ẹ káàárọ̀	ɛ̀ káàːrɔ̀
+ẹ ṣé	ɛ̀ ʃɛ́
+jọ̀wọ́	dʒɔ̀wɔ́
+alaye	àlàˈjɛ́
+iranlọwọ	ìɾànˈlɔ́wɔ́

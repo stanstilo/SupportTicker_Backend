@@ -1,0 +1,224 @@
+[
+  {
+    "title": "How to reset password",
+    "excerpt": "Steps to reset a password for support portal users.",
+    "content": "If you forget your password, go to the sign-in page, click \"Forgot password?\", enter your email address, and follow the reset link sent to your inbox.",
+    "source": "internal/kb/password-reset"
+  },
+  {
+    "title": "Ticket escalation policy",
+    "excerpt": "Guidelines for escalating a support ticket when no assignee is available.",
+    "content": "If a ticket is unassigned for more than 4 hours, escalate to the on-call manager. The manager must assign an owner within 2 hours or route the ticket to the staffing queue.",
+    "source": "internal/kb/escalation-policy"
+  },
+  {
+    "title": "How do I open a personal savings account?",
+    "excerpt": "Instructions for opening a personal savings account.",
+    "content": "To open a personal savings account, visit a branch or use the mobile app, complete the account opening form, provide valid identity documents, and verify your contact details before submitting the application.",
+    "source": "internal/kb/banking/account-opening/personal-savings"
+  },
+  {
+    "title": "What documents are required to open a current account?",
+    "excerpt": "Checklist of documents needed for current account opening.",
+    "content": "A current account application typically requires a government-issued ID, proof of address, tax identification number, and a completed KYC form. Additional documentation may be requested depending on your residency or business status.",
+    "source": "internal/kb/banking/account-opening/current-account"
+  },
+  {
+    "title": "Can I open a joint bank account online?",
+    "excerpt": "Availability of online joint account opening.",
+    "content": "Yes, many banks allow joint account opening online, but both applicants usually need to complete identity verification, provide KYC information, and consent to shared access and transaction permissions.",
+    "source": "internal/kb/banking/account-opening/joint-account"
+  },
+  {
+    "title": "Why is my account opening application pending?",
+    "excerpt": "Reason for delayed account approval.",
+    "content": "Your account application may be pending due to incomplete documentation, identity verification issues, sanctions screening, or review of source-of-funds information. The bank may request additional documents to continue processing.",
+    "source": "internal/kb/banking/account-opening/application-pending"
+  },
+  {
+    "title": "What is KYC and why is it required?",
+    "excerpt": "Explanation of KYC in account opening.",
+    "content": "KYC, or Know Your Customer, is a regulatory requirement to verify your identity and assess financial risk. Banks use KYC to confirm your identity, address, source of funds, and to prevent fraud and money laundering.",
+    "source": "internal/kb/banking/account-opening/kyc"
+  },
+  {
+    "title": "How long does account opening take?",
+    "excerpt": "Typical timeline for account approval.",
+    "content": "Most account opening requests are approved within a few minutes to a few business days depending on the document verification process, the chosen account type, and whether manual review is needed.",
+    "source": "internal/kb/banking/account-opening/timeline"
+  },
+  {
+    "title": "Can I open an account for a minor?",
+    "excerpt": "Minor account opening guidance.",
+    "content": "Yes, banks may offer child or minor savings accounts with a guardian or parent as the primary account holder. Documentation such as the child’s birth certificate and guardian identification may be required.",
+    "source": "internal/kb/banking/account-opening/minor-account"
+  },
+  {
+    "title": "What if my identity document has expired?",
+    "excerpt": "Problem with expired ID during onboarding.",
+    "content": "If your identity document has expired, the bank may request a renewed government-issued ID or another accepted verification method. Some applications can be held until a valid document is submitted.",
+    "source": "internal/kb/banking/account-opening/expired-id"
+  },
+  {
+    "title": "Can I open a business account with no physical office?",
+    "excerpt": "Business account opening for remote companies.",
+    "content": "Yes, some banks allow business account opening for remote or online businesses, but you may need to provide business registration documents, tax IDs, proof of directors, and a signed application form.",
+    "source": "internal/kb/banking/account-opening/business-account"
+  },
+  {
+    "title": "What is the minimum deposit to open an account?",
+    "excerpt": "Minimum opening deposit information.",
+    "content": "The minimum deposit varies by bank and account type. Some accounts may require no initial deposit, while others may require a small opening balance depending on the product offering.",
+    "source": "internal/kb/banking/account-opening/minimum-deposit"
+  },
+  {
+    "title": "How do I open an account if I am a non-resident?",
+    "excerpt": "Non-resident account opening requirements.",
+    "content": "Non-resident account opening usually requires a valid passport, proof of address in your country of residence, tax identification details, and compliance documentation. The bank may ask for additional checks due to cross-border regulatory requirements.",
+    "source": "internal/kb/banking/account-opening/non-resident"
+  },
+  {
+    "title": "Can I use a foreign passport for account opening?",
+    "excerpt": "Foreign passport accepted for onboarding.",
+    "content": "Yes, many banks accept foreign passports as a valid form of identification, but you may also need proof of local address and residency status depending on the account type and jurisdiction.",
+    "source": "internal/kb/banking/account-opening/foreign-passport"
+  },
+  {
+    "title": "What if my proof of address is not in my name?",
+    "excerpt": "Address proof mismatch issue.",
+    "content": "If the address proof is not in your name, the bank may require an alternative document such as a utility bill, tenancy agreement, or employer letter that shows your residential address and confirms your identity.",
+    "source": "internal/kb/banking/account-opening/address-proof"
+  },
+  {
+    "title": "Can I open an account without visiting a branch?",
+    "excerpt": "Remote account opening question.",
+    "content": "Yes, online or digital account opening is commonly available for eligible customers. You may still need to complete identity verification through video, secure document upload, or a branch visit depending on the bank’s policies.",
+    "source": "internal/kb/banking/account-opening/online-open"
+  },
+  {
+    "title": "What happens after I submit my account application?",
+    "excerpt": "Post-submission onboarding status.",
+    "content": "After submission, the bank reviews your application, validates your documents, performs risk and compliance checks, and then either approves, requests more information, or rejects the application with a reason.",
+    "source": "internal/kb/banking/account-opening/post-submit"
+  },
+  {
+    "title": "How do I update my residential address after opening an account?",
+    "excerpt": "Address update after onboarding.",
+    "content": "You can update your residential address through the mobile app, online banking portal, or by visiting a branch. You may need to upload a supporting document such as a utility bill or government letter.",
+    "source": "internal/kb/banking/account-opening/address-update"
+  },
+  {
+    "title": "What is the difference between a savings account and a current account?",
+    "excerpt": "Account type comparison.",
+    "content": "A savings account is typically intended for cash accumulation and may offer interest, while a current account is designed for day-to-day transactions and withdrawals with check or debit card access.",
+    "source": "internal/kb/banking/account-opening/account-types"
+  },
+  {
+    "title": "Can I open a student account?",
+    "excerpt": "Student account opening information.",
+    "content": "Yes, many banks offer student accounts with reduced fees and tailored benefits. You may need to provide school enrollment proof or a student ID along with valid identification.",
+    "source": "internal/kb/banking/account-opening/student-account"
+  },
+  {
+    "title": "How do I add my spouse as a joint account holder?",
+    "excerpt": "Joint holder enrollment question.",
+    "content": "During the application process, you can specify the additional account holder and submit their identification details, residency information, and consent for access and account management privileges.",
+    "source": "internal/kb/banking/account-opening/joint-holder"
+  },
+  {
+    "title": "Can I open a corporate account for a newly registered company?",
+    "excerpt": "Startup or newly registered company account opening.",
+    "content": "Yes, newly registered companies can often open corporate accounts if they provide incorporation documents, tax registration details, board resolution, and proper identification for authorized signatories.",
+    "source": "internal/kb/banking/account-opening/corporate-new-company"
+  },
+  {
+    "title": "What if my account application is rejected?",
+    "excerpt": "Rejected onboarding guidance.",
+    "content": "If your account application is rejected, the bank should provide a reason, such as document mismatch or compliance failure. You can usually reapply after correcting the issue or contact support for guidance on resubmission.",
+    "source": "internal/kb/banking/account-opening/rejection"
+  },
+  {
+    "title": "How do I open an account using my phone number only?",
+    "excerpt": "Phone-number-only customer onboarding.",
+    "content": "Most banks require formal identity verification and official documentation, so a phone number alone is not enough to open an account. You may need to complete the full KYC process and provide supporting documents.",
+    "source": "internal/kb/banking/account-opening/phone-only"
+  },
+  {
+    "title": "Do I need to provide my tax ID when opening an account?",
+    "excerpt": "Tax ID requirement for onboarding.",
+    "content": "In many jurisdictions, a tax identification number or equivalent tax reference is required to complete AML and KYC checks, especially for account verification and regulatory reporting.",
+    "source": "internal/kb/banking/account-opening/tax-id"
+  },
+  {
+    "title": "How do I open a fixed deposit account?",
+    "excerpt": "Fixed deposit onboarding steps.",
+    "content": "To open a fixed deposit account, choose the deposit amount, maturity period, and account type, then complete the application with your identification details and funding source verification.",
+    "source": "internal/kb/banking/account-opening/fixed-deposit"
+  },
+  {
+    "title": "Can I open multiple accounts in one application?",
+    "excerpt": "Multiple account application support.",
+    "content": "Some banks allow customers to open more than one account type in a single journey, though each account may require separate verification and consent depending on the product structure.",
+    "source": "internal/kb/banking/account-opening/multi-account"
+  },
+  {
+    "title": "What is the role of the director in business account onboarding?",
+    "excerpt": "Business onboarding signatory details.",
+    "content": "A business account application often requires authorized directors or signatories to confirm ownership, approve account opening, and provide valid identification for compliance verification.",
+    "source": "internal/kb/banking/account-opening/director-role"
+  },
+  {
+    "title": "Can I use my work email instead of personal email?",
+    "excerpt": "Email address requirement during account opening.",
+    "content": "Yes, banks may accept a work email address for communication, as long as it is valid and can receive security alerts, account status updates, and verification messages.",
+    "source": "internal/kb/banking/account-opening/work-email"
+  },
+  {
+    "title": "How do I complete identity verification for my account?",
+    "excerpt": "Identity verification process guidance.",
+    "content": "Identity verification may be completed through ID upload, document scanning, selfie capture, or a live branch verification step. The bank uses this to verify the identity of the applicant and protect against fraud.",
+    "source": "internal/kb/banking/account-opening/identity-verification"
+  },
+  {
+    "title": "Why do I need a selfie during onboarding?",
+    "excerpt": "Selfie verification explanation.",
+    "content": "A selfie helps confirm that the person opening the account matches the submitted ID document and prevents fraudulent account creation. The image is compared against the ID photo or biometric records.",
+    "source": "internal/kb/banking/account-opening/selfie"
+  },
+  {
+    "title": "Can I open an account if I am unemployed?",
+    "excerpt": "Account opening for unemployed applicants.",
+    "content": "Yes, many banks allow account opening for unemployed individuals, but they may require alternative proof of income, source-of-funds documentation, or a guarantor depending on the account type.",
+    "source": "internal/kb/banking/account-opening/unemployed"
+  },
+  {
+    "title": "What is the difference between eKYC and branch KYC?",
+    "excerpt": "Comparison of digital and branch KYC processes.",
+    "content": "eKYC is a digital identity verification process completed online, while branch KYC is performed in person by a bank officer. Both are designed to satisfy regulatory identity verification requirements.",
+    "source": "internal/kb/banking/account-opening/ekyc"
+  },
+  {
+    "title": "How do I change my mobile number on my account?",
+    "excerpt": "Mobile number update support.",
+    "content": "You can change your registered mobile number in the bank app, through online banking, or at a branch. You may need to verify the new number with a one-time code before it is activated.",
+    "source": "internal/kb/banking/account-opening/mobile-number-update"
+  },
+  {
+    "title": "Can I open a trust account?",
+    "excerpt": "Trust account opening information.",
+    "content": "Trust accounts can usually be opened with the appropriate trust documents, beneficiary details, trustee identification, and compliance review. The bank may require additional documentation based on jurisdiction and trust structure.",
+    "source": "internal/kb/banking/account-opening/trust-account"
+  },
+  {
+    "title": "What is a source of funds declaration?",
+    "excerpt": "Source of funds explanation.",
+    "content": "A source of funds declaration explains where the money used to open or fund an account comes from. This helps the bank assess potential financial crime risk and satisfy regulatory reporting requirements.",
+    "source": "internal/kb/banking/account-opening/source-of-funds"
+  },
+  {
+    "title": "How do I open an account if I have multiple nationalities?",
+    "excerpt": "Multi-nationality onboarding guidance.",
+    "content": "Banks may accept multiple nationalities if the applicant can provide valid identification from each relevant country and comply with local residency and tax documentation rules.",
+    "source": "internal/kb/banking/account-opening/multi-nationality"
+  }
+]

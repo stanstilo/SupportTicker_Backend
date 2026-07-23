@@ -1,0 +1,8 @@
+# One phrase per line. Blank lines and #comments are ignored.
+# Seed list for bulk IPA bootstrapping (default input for bootstrap_ipa.py).
+Ndewo
+Kedu
+Daalụ
+Ị bịara nnọọ
+Biko
+Ọ dị mma

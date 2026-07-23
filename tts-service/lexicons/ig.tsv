@@ -1,0 +1,20 @@
+# Igbo (ig) IPA lexicon — <surface form>\t<IPA>
+# Seed entries. Igbo is a tonal language; tone diacritics (˥ high, ˩ low, or the
+# combining acute/grave) matter and should be kept. espeak-ng usually has no
+# native Igbo voice, so these entries drive the Tier-2 approximate rendering and
+# the SSML <phoneme> output. Expand in bulk with bootstrap_ipa.py.
+#
+# Greetings / courtesy (from the original igbo-ssml phrases.txt)
+ndewo	ndèˈwó
+kedu	kèˈdú
+kedụ	kèˈdʊ́
+daalụ	dàːˈlʊ́
+biko	bìˈkó
+ọ dị mma	ɔ̀ dì ˈmːá
+ị bịara nnọọ	ì bìˈàɾà nːɔ̀ɔ̀
+# Common support-desk vocabulary
+enyemaka	ɛ̀ɲɛ̀ˈmàkà
+nsogbu	nsòˈɡbù
+akaụntụ	àkàˈʊ̀ntʊ̀
+ego	èˈɡo
+bank	bàŋk

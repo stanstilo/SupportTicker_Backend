@@ -7,20 +7,25 @@
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "start": "tsx src/index.ts",
+    "populate-support-docs": "tsx scripts/supabase-support-docs-pipeline.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.2",
     "@fastify/jwt": "^9.0.3",
     "bcryptjs": "^2.4.3",
-    "better-sqlite3": "^11.8.1",
+    "dotenv": "^16.2.0",
     "fastify": "^5.2.1",
-    "jose": "^6.2.3"
+    "jose": "^6.2.3",
+    "libsql": "^0.5.29",
+    "nodemailer": "^6.9.4",
+    "pg": "^8.14.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
-    "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^20.14.0",
+    "@types/nodemailer": "^8.0.1",
+    "@types/pg": "^8.20.0",
     "tsx": "^4.19.2",
     "typescript": "^5.5.4"
   }

@@ -1,0 +1,9 @@
+# Python TTS service dependencies.
+# The espeak-ng BINARY is a system package, not pip — install it separately
+# (see README.md / Dockerfile). phonemizer shells out to it.
+fastapi>=0.110,<1.0
+uvicorn[standard]>=0.29,<1.0
+phonemizer>=3.2,<4.0
+# Optional: only needed when TTS_AUDIO_FORMAT=mp3 (also requires the ffmpeg
+# binary). WAV output works without it.
+pydub>=0.25,<1.0

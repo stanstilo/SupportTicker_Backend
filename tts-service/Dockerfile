@@ -1,0 +1,22 @@
+# Python TTS service — bundles the espeak-ng binary (and ffmpeg for optional
+# MP3 output) with the app. Build context is this directory (tts-service/).
+FROM python:3.11-slim
+
+# System deps: espeak-ng provides the voices + the shared lib phonemizer loads;
+# ffmpeg is only used when TTS_AUDIO_FORMAT=mp3.
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends espeak-ng ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# phonemizer finds the shared library via this on Debian/Ubuntu.
+ENV PHONEMIZER_ESPEAK_LIBRARY=/usr/lib/x86_64-linux-gnu/libespeak-ng.so.1
+ENV TTS_AUDIO_FORMAT=wav
+
+EXPOSE 8081
+CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8081"]

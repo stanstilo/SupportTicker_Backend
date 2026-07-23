@@ -1,0 +1,129 @@
+# Render Blueprint for the Support Ticker backend (Fastify + SQLite).
+# Deploy: push this repo to GitHub, then in Render → New → Blueprint, pick the repo.
+# Render reads this file, creates the Web Service, and prompts for the secrets
+# marked `sync: false`. Non-secret defaults are set inline below.
+#
+# After the first deploy you get a stable URL like https://supportticket-backend.onrender.com
+# — that base URL is what the Maestro BPMN HTTP nodes call (/api/maestro/df-insert, etc).
+services:
+  - type: web
+    name: supportticket-backend
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # --- Runtime (non-secret) ---
+      - key: NODE_VERSION
+        value: "22"
+      # PORT is injected by Render automatically; the server already reads it.
+
+      # --- Orchestrator / Maestro: non-secret operational config ---
+      - key: ORCH_CLOUD_URL
+        value: https://cloud.uipath.com
+      - key: ORCH_TENANT
+        value: DefaultTenant
+      - key: ORCH_QUEUE_NAME
+        value: HelixNewTickets
+      - key: ORCH_PROC_SCOPE
+        value: OR.Default
+
+      # --- Secrets & environment-specific IDs: set these in the Render dashboard ---
+      # (paste the values from your local .env; Render lets you bulk-paste)
+      - key: ORCH_ORG
+        sync: false
+      - key: ORCH_SCOPE
+        sync: false
+      - key: ORCH_CLIENT_ID
+        sync: false
+      - key: ORCH_CLIENT_SECRET
+        sync: false
+      - key: ORCH_FOLDER_ID
+        sync: false
+      - key: ORCH_MAESTRO_FOLDER_ID
+        sync: false
+      - key: ORCH_MAESTRO_RELEASE
+        sync: false
+      - key: MAESTRO_SYNC_KEY
+        sync: false
+
+      # --- Persistence: Turso (libSQL) ---
+      # With these set, the backend opens data/support-ticker.db as an embedded
+      # replica of the Turso primary: local sync reads/writes, forwarded to the
+      # cloud primary which is the durable source of truth. This is what survives
+      # the free-plan ephemeral filesystem — no persistent disk needed. Set both
+      # in the Render dashboard (paste from your local .env). Leave them unset to
+      # fall back to a plain (ephemeral) local SQLite file.
+      - key: TURSO_DATABASE_URL
+        sync: false
+      - key: TURSO_AUTH_TOKEN
+        sync: false
+
+      # --- App auth ---
+      # Render generates a strong secret on first deploy. The DB now persists in
+      # Turso (above), but JWTs are stateless so a rotated secret just forces a
+      # re-login; it does not affect stored data.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # --- Dataverse CRM integration (set in dashboard) ---
+      - key: DATAVERSE_BASE_URL
+        sync: false
+      - key: DATAVERSE_TENANT_ID
+        sync: false
+      - key: DATAVERSE_CLIENT_ID
+        sync: false
+      - key: DATAVERSE_CLIENT_SECRET
+        sync: false
+      - key: DATAVERSE_API_VERSION
+        sync: false
+
+      # --- Firebase auth bridge (set in dashboard) ---
+      - key: FIREBASE_PROJECT_ID
+        sync: false
+
+      # --- Text-to-speech: URL of the Python TTS engine service below ---
+      # Render exposes private service-to-service URLs; use the sibling service's
+      # internal host. If unset, the client falls back to browser speech synthesis.
+      - key: TTS_SERVICE_URL
+        fromService:
+          type: web
+          name: supportticket-tts
+          property: hostport
+        # Render fills host:port; the backend prefixes http:// via its default
+        # handling. If your plan yields only the hostport, set the full URL here
+        # instead (e.g. http://supportticket-tts:8081) via the dashboard.
+
+  # -------------------------------------------------------------------------- #
+  # Python TTS engine (espeak-ng + phonemizer + IPA lexicon). Node proxies to it.
+  # Built from tts-service/Dockerfile so the espeak-ng binary is bundled.
+  # -------------------------------------------------------------------------- #
+  - type: web
+    name: supportticket-tts
+    runtime: docker
+    plan: free
+    dockerfilePath: tts-service/Dockerfile
+    dockerContext: tts-service
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: TTS_AUDIO_FORMAT
+        value: wav
+      - key: TTS_CACHE_SIZE
+        value: "200"
+
+# ----------------------------------------------------------------------------
+# NOTE — SQLite persistence:
+# On the free plan the filesystem is ephemeral: data/support-ticker.db is rebuilt
+# and reseeded on every deploy/restart. That's fine for the Maestro hybrid test
+# (record-of-truth for tickets is Data Fabric; logins reseed). For durable data,
+# upgrade the plan and add a persistent disk, then point the DB at it:
+#
+#     disk:
+#       name: data
+#       mountPath: /var/data
+#       sizeGB: 1
+#   and add env var:  DB_PATH = /var/data/support-ticker.db
+# ----------------------------------------------------------------------------
