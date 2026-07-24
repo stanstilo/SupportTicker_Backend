@@ -1,0 +1,12 @@
+# Optional: neural native-language TTS (Meta MMS-TTS / VITS) for Igbo, Yorùbá,
+# Hausa. Heavy (~2GB with PyTorch) — kept OUT of the base requirements so the
+# default/free-tier deploy stays small. Install to enable:
+#
+#   pip install -r requirements-mms.txt
+#
+# CPU-only PyTorch keeps the download smaller; on Linux/Windows the default
+# wheels are already CPU. (For an explicit CPU wheel:
+#   pip install torch --index-url https://download.pytorch.org/whl/cpu )
+torch>=2.0
+transformers>=4.40
+numpy>=1.24

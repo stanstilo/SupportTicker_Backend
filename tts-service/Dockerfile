@@ -3,9 +3,10 @@
 FROM python:3.11-slim
 
 # System deps: espeak-ng provides the voices + the shared lib phonemizer loads;
-# ffmpeg is only used when TTS_AUDIO_FORMAT=mp3.
+# ffmpeg is used for optional MP3 TTS output; libgomp1 is required by
+# ctranslate2 (the faster-whisper STT runtime).
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends espeak-ng ffmpeg \
+    && apt-get install -y --no-install-recommends espeak-ng ffmpeg libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

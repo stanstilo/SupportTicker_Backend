@@ -24,14 +24,18 @@ export function initDb(): void {
     );
 
     CREATE TABLE IF NOT EXISTS users (
-      id            TEXT PRIMARY KEY,
-      name          TEXT NOT NULL,
-      email         TEXT NOT NULL UNIQUE,
-      company       TEXT NOT NULL,
-      password_hash TEXT NOT NULL,
-      avatar_color  TEXT NOT NULL,
-      role          TEXT NOT NULL DEFAULT 'agent',
-      created_at    TEXT NOT NULL
+      id                       TEXT PRIMARY KEY,
+      name                     TEXT NOT NULL,
+      email                    TEXT NOT NULL UNIQUE,
+      company                  TEXT NOT NULL,
+      password_hash            TEXT NOT NULL,
+      avatar_color             TEXT NOT NULL,
+      role                     TEXT NOT NULL DEFAULT 'agent',
+      email_verified           INTEGER NOT NULL DEFAULT 0,
+      email_verification_token TEXT,
+      department               TEXT,
+      availability             TEXT NOT NULL DEFAULT 'available',
+      created_at               TEXT NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS accounts (
@@ -117,10 +121,21 @@ function migrate(): void {
   if (!userCols.some((c) => c.name === 'role')) {
     db.exec(`ALTER TABLE users ADD COLUMN role TEXT NOT NULL DEFAULT 'agent'`)
   }
+  if (!userCols.some((c) => c.name === 'email_verified')) {
+    db.exec(`ALTER TABLE users ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0`)
+  }
+  if (!userCols.some((c) => c.name === 'email_verification_token')) {
+    db.exec(`ALTER TABLE users ADD COLUMN email_verification_token TEXT`)
+  }
   // Service department a user belongs to (a ServiceLine value); drives which
   // requests they can be assigned. Nullable — management/legacy accounts have none.
   if (!userCols.some((c) => c.name === 'department')) {
     db.exec(`ALTER TABLE users ADD COLUMN department TEXT`)
+  }
+  // Agent availability (available|busy|offline); drives which agents are eligible
+  // for auto-assignment/escalation. Defaults to 'available' for existing users.
+  if (!userCols.some((c) => c.name === 'availability')) {
+    db.exec(`ALTER TABLE users ADD COLUMN availability TEXT NOT NULL DEFAULT 'available'`)
   }
 
   const tcols = () => db.prepare(`PRAGMA table_info(tickets)`).all() as { name: string; notnull: number }[]

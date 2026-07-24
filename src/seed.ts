@@ -107,7 +107,7 @@ export async function seedIfEmpty(): Promise<void> {
   // Admin → Organization) to rebrand. The domain identifies the org's people:
   // anyone@<domain> is an onboarded member, and their requests map to the org.
   const orgName = process.env.ORG_NAME ?? 'GifsonServices'
-  const domain = (process.env.ORG_DOMAIN ?? process.env.ORG_EMAIL_DOMAIN ?? 'gifsonservices.com').toLowerCase().replace(/^@/, '')
+  const domain = (process.env.ORG_DOMAIN ?? process.env.ORG_EMAIL_DOMAIN ?? 'gifsonservices.onmicrosoft.com').toLowerCase().replace(/^@/, '')
 
   // Seed the primary organization on first boot (idempotent).
   if (!primaryOrganization()) {
@@ -146,12 +146,13 @@ export async function seedIfEmpty(): Promise<void> {
   // of the box (password: agent1234). Real users get their department at sign-up;
   // these are safe to delete. Idempotent + department kept in sync on re-seed.
   const AGENTS: [name: string, local: string, department: string, avatar: string][] = [
-    ['Clara Obi', 'clara', 'retail-banking', AVATAR[0]],
-    ['Musa Bello', 'musa', 'retail-banking', AVATAR[1]],
-    ['Ada Eze', 'ada', 'payments', AVATAR[2]],
-    ['Tunde Cole', 'tunde', 'payments', AVATAR[3]],
-    ['Ngozi Ike', 'ngozi', 'lending-mortgages', AVATAR[4]],
-    ['Femi Alabi', 'femi', 'lending-mortgages', AVATAR[5]],
+    ['Boomarobe', 'boomarobe', 'support', AVATAR[0]],
+    ['Royal', 'royal', 'support', AVATAR[1]],
+    ['Sound Cloner', 'souncloner', 'payments', AVATAR[2]],
+    ['Yalebs Tech', 'yalebstech', 'payments', AVATAR[3]],
+    ['Ada', 'ada', 'support', AVATAR[4]],
+    ['Clara', 'clara', 'payments', AVATAR[5]],
+    ['Stephen', 'stephen', 'retail banking', AVATAR[0]],
   ]
   const agentHash = await hashPassword('agent1234')
   for (const [name, local, department, avatar] of AGENTS) {

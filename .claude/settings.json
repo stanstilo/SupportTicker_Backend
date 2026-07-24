@@ -16,7 +16,17 @@
       "Bash(node -e \"const l=require\\('./package-lock.json'\\); const k='node_modules/@libsql/linux-x64-gnu'; const p=l.packages[k]; console.log\\(k, p?\\('os='+p.os+' cpu='+p.cpu+' optional='+p.optional\\):'MISSING'\\)\")",
       "Bash(node -e \"const l=require\\('./package-lock.json'\\); const k='node_modules/@libsql/linux-x64-gnu'; const p=l.packages[k]; console.log\\(p?\\('os='+p.os+' cpu='+p.cpu+' optional='+p.optional\\):'MISSING'\\)\")",
       "Bash(npm audit *)",
-      "Bash(JWT_SECRET=test-secret npx tsx -e ' *)"
+      "Bash(JWT_SECRET=test-secret npx tsx -e ' *)",
+      "Bash(echo \"EXIT:$?\")",
+      "Bash(grep -vE '^\\\\s*#|^\\\\s*$' .env.example)",
+      "Bash(echo \"FRONTEND_EXIT:$?\")",
+      "Bash(echo \"BACKEND_EXIT:$?\")",
+      "Bash(npx tsx *)",
+      "Bash(echo \"BACKEND_TS_EXIT:$?\")",
+      "Bash(python -m py_compile tts-service/stt.py tts-service/app.py)",
+      "Bash(python -c \"import faster_whisper; print\\('faster-whisper', faster_whisper.__version__\\)\")",
+      "Bash(curl -s -m 4 http://localhost:8081/health)",
+      "PowerShell(Add-Type -AssemblyName System.Speech; $s = New-Object System.Speech.Synthesis.SpeechSynthesizer; $out = \"C:\\\\Users\\\\USER\\\\Downloads\\\\SupportTicket-Backend\\\\tts-service\\\\sample-speech.wav\"; $s.SetOutputToWaveFile\\($out\\); $s.Speak\\(\"Hello, I would like to open a new savings account.\"\\); $s.Dispose\\(\\); if \\(Test-Path $out\\) { \"WROTE $out \\($\\(\\(Get-Item $out\\).Length\\) bytes\\)\" } else { \"FAILED to write wav\" })"
     ]
   }
 }

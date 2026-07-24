@@ -84,6 +84,38 @@ services:
       - key: FIREBASE_PROJECT_ID
         sync: false
 
+      # --- Email notifications (SMTP) ---
+      # Powers BOTH the SLA escalation emails to the admin AND the requester
+      # notifications sent on every status/assignment change. Leave unset to
+      # disable sending — the app still runs and logs what it WOULD have sent.
+      # Set SMTP_HOST/USER/PASS/FROM in the dashboard (SMTP_PASS is the secret);
+      # PORT/SECURE default to 587/STARTTLS below (use 465/"true" for implicit TLS).
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_SECURE
+        value: "false"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # Escalation recipient (must start with admin@, else derived from the org
+      # domain). Requester notifications go to each ticket's own requesterEmail.
+      - key: ADMIN_EMAIL
+        sync: false
+      # Org email domain used to derive the admin@ recipient when ADMIN_EMAIL is unset.
+      - key: ORG_EMAIL_DOMAIN
+        sync: false
+
+      # --- FX rates (live currency conversion for the FX & payments tool) ---
+      # Multi-provider live rates with static fallback; no API key required.
+      # This only tunes how long a fetched rate table is cached, in ms (default 1h).
+      - key: RATES_TTL_MS
+        value: "3600000"
+
       # --- Text-to-speech: URL of the Python TTS engine service below ---
       # Render exposes private service-to-service URLs; use the sibling service's
       # internal host. If unset, the client falls back to browser speech synthesis.
@@ -113,6 +145,19 @@ services:
         value: wav
       - key: TTS_CACHE_SIZE
         value: "200"
+      # Self-hosted Whisper STT accuracy/latency knobs. 'base' fits the 512MB
+      # free plan; bump to 'small' (best balance) or 'medium' (most accurate) on
+      # a larger instance — the app default is 'small' when this is unset. VAD
+      # trims silence (fewer dropped words); beam size trades speed for accuracy.
+      - key: WHISPER_MODEL
+        value: base
+      - key: WHISPER_COMPUTE_TYPE
+        value: int8
+      - key: WHISPER_VAD
+        value: "true"
+      # 1 = greedy (fastest); raise to 5 for a little more accuracy at higher latency.
+      - key: WHISPER_BEAM_SIZE
+        value: "1"
 
 # ----------------------------------------------------------------------------
 # NOTE — SQLite persistence:

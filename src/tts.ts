@@ -21,7 +21,12 @@ function normalizeBase(url: string): string {
 }
 
 const TTS_SERVICE_URL = normalizeBase(process.env.TTS_SERVICE_URL ?? 'http://127.0.0.1:8081')
-const TTS_TIMEOUT_MS = Number(process.env.TTS_TIMEOUT_MS ?? 15000)
+// Generous timeout: the first native request after a restart pays a cold neural
+// MMS-TTS model load (Yorùbá ~35s on CPU). A short timeout here cuts that off and
+// makes the client fall back to the English browser voice — so allow the cold
+// load to finish. (The Python service warms the models in the background at
+// startup, so warm requests return in ~1s regardless.)
+const TTS_TIMEOUT_MS = Number(process.env.TTS_TIMEOUT_MS ?? 60000)
 const MAX_TEXT = 1200 // guard against very long inputs (engine caps again)
 
 export interface TtsResult {

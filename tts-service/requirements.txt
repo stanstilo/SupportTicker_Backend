@@ -7,3 +7,8 @@ phonemizer>=3.2,<4.0
 # Optional: only needed when TTS_AUDIO_FORMAT=mp3 (also requires the ffmpeg
 # binary). WAV output works without it.
 pydub>=0.25,<1.0
+# Speech-to-text (self-hosted Whisper). Pulls ctranslate2 + PyAV (bundled
+# ffmpeg for audio decoding). CPU int8 by default — see stt.py env vars.
+faster-whisper>=1.0,<2.0
+# Translation (Igbo/Yorùbá/Hausa <-> English) via Google Translate, no API key.
+deep-translator>=1.11,<2.0

@@ -8,6 +8,7 @@ import {
   type ActivityKind,
   type Attachment,
   type AuthUser,
+  type Availability,
   type Contact,
   type Feedback,
   type NewTicketInput,
@@ -116,6 +117,8 @@ export function createUser(input: {
   avatarColor: string
   role?: UserRole
   department?: ServiceLine | null
+  emailVerified?: boolean
+  emailVerificationToken?: string | null
 }): UserRecord {
   const user: UserRecord = {
     id: randomUUID(),
@@ -126,11 +129,14 @@ export function createUser(input: {
     avatarColor: input.avatarColor,
     role: input.role ?? 'agent',
     department: input.department ?? null,
+    availability: 'available',
+    emailVerified: input.emailVerified ?? false,
+    emailVerificationToken: input.emailVerificationToken ?? null,
     createdAt: now(),
   }
   db.prepare(
-    `INSERT INTO users (id, name, email, company, password_hash, avatar_color, role, department, created_at)
-     VALUES (@id, @name, @email, @company, @passwordHash, @avatarColor, @role, @department, @createdAt)`,
+    `INSERT INTO users (id, name, email, company, password_hash, avatar_color, role, email_verified, email_verification_token, department, availability, created_at)
+     VALUES (@id, @name, @email, @company, @passwordHash, @avatarColor, @role, @emailVerified, @emailVerificationToken, @department, @availability, @createdAt)`,
   ).run(user)
   return user
 }
@@ -146,12 +152,29 @@ function rowToUser(row: Record<string, unknown> | undefined): UserRecord | undef
     avatarColor: row.avatar_color as string,
     role: (row.role as UserRole) ?? 'agent',
     department: (row.department as ServiceLine | null) ?? null,
+    availability: (row.availability as Availability) ?? 'available',
+    emailVerified: !!row.email_verified,
+    emailVerificationToken: (row.email_verification_token as string | null) ?? null,
     createdAt: row.created_at as string,
   }
 }
 
 export function findUserByEmail(email: string): UserRecord | undefined {
   return rowToUser(db.prepare('SELECT * FROM users WHERE email = ?').get(email) as never)
+}
+
+export function findUserByVerificationToken(token: string): UserRecord | undefined {
+  return rowToUser(db.prepare('SELECT * FROM users WHERE email_verification_token = ?').get(token) as never)
+}
+
+export function setUserVerificationToken(id: string, token: string): UserRecord | undefined {
+  db.prepare('UPDATE users SET email_verification_token = ? WHERE id = ?').run(token, id)
+  return getUserById(id)
+}
+
+export function verifyUserEmail(id: string): UserRecord | undefined {
+  db.prepare('UPDATE users SET email_verified = 1, email_verification_token = NULL WHERE id = ?').run(id)
+  return getUserById(id)
 }
 
 export function getUserById(id: string): UserRecord | undefined {
@@ -174,6 +197,7 @@ function rowToSummary(row: Record<string, unknown>): UserSummary {
     avatarColor: row.avatar_color as string,
     role: (row.role as UserRole) ?? 'agent',
     department: (row.department as ServiceLine | null) ?? null,
+    availability: (row.availability as Availability) ?? 'available',
     createdAt: row.created_at as string,
   }
 }
@@ -202,16 +226,28 @@ export function setUserDepartment(id: string, department: ServiceLine | null): U
   return getUserSummary(id)
 }
 
+/** Set a user's availability (available|busy|offline). Returns the updated summary. */
+export function setUserAvailability(id: string, availability: Availability): UserSummary | undefined {
+  const result = db.prepare('UPDATE users SET availability = ? WHERE id = ?').run(availability, id)
+  if (result.changes === 0) return undefined
+  return getUserSummary(id)
+}
+
 /** Members of a given service department — the pool a request in that service
  *  line can be assigned to. Used by both admin assignment and peer hand-off. */
-export function listAssignable(department: ServiceLine): Pick<UserSummary, 'name' | 'email' | 'avatarColor' | 'department'>[] {
+export function listAssignable(
+  department: ServiceLine,
+): Pick<UserSummary, 'name' | 'email' | 'avatarColor' | 'department' | 'availability'>[] {
   return (
-    db.prepare('SELECT name, email, avatar_color, department FROM users WHERE department = ? ORDER BY name').all(department) as Record<string, unknown>[]
+    db
+      .prepare('SELECT name, email, avatar_color, department, availability FROM users WHERE department = ? ORDER BY name')
+      .all(department) as Record<string, unknown>[]
   ).map((r) => ({
     name: r.name as string,
     email: r.email as string,
     avatarColor: r.avatar_color as string,
     department: (r.department as ServiceLine | null) ?? null,
+    availability: (r.availability as Availability) ?? 'available',
   }))
 }
 
@@ -393,8 +429,8 @@ export function createTicket(input: NewTicketInput, meta: CreateMeta): Ticket {
       onBehalf: meta.onBehalf ? 1 : 0,
       assignToMe: meta.assignToMe ? 1 : 0,
       createdAt: created,
-      // Default SLA: 24h from creation.
-      slaDueAt: new Date(Date.now() + 24 * 36e5).toISOString(),
+      // Default SLA: 1h from creation.
+      slaDueAt: new Date(Date.now() + 1 * 36e5).toISOString(),
     })
     const ticketId = Number(result.lastInsertRowid)
 

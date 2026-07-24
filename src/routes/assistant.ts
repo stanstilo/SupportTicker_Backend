@@ -1,5 +1,7 @@
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { synthesizeSpeech } from '../tts'
+import { transcribeAudio } from '../stt'
+import { translateText } from '../translate'
 
 /**
  * Supabase-backed RAG assistant.
@@ -45,30 +47,34 @@ interface AssistantRequest {
  *  greeting / no-match fallback) in the selected language. Translations are
  *  best-effort and worth a native-speaker review. */
 type LangCode = 'en' | 'ig' | 'yo' | 'ha'
-const LOCALES: Record<LangCode, { name: string; greeting: string; noMatch: string }> = {
+const LOCALES: Record<LangCode, { name: string; greeting: string; noMatch: string; help: string }> = {
   en: {
     name: 'English',
     greeting: "Hello — I'm here and ready to help. How may I assist you today?",
     noMatch:
       "I couldn't find a matching answer in our knowledge base. I can help you log a support request so the right team can follow up.",
+    help: "I can answer questions from our knowledge base — things like opening an account, resetting your password, cards, transfers, and ticket policies. Ask me a question, or I can help you log a support request.",
   },
   ig: {
     name: 'Igbo',
     greeting: 'Ndewo — anọ m ebe a ịnyere gị aka. Kedu ka m ga-esi nyere gị aka taa?',
     noMatch:
       'Ahụghị m azịza dabara na ntọala ihe ọmụma anyị. Enwere m ike inyere gị aka idebanye arịrịọ nkwado ka ndị otu kwesịrị ekwesị nyochaa ya.',
+    help: 'Enwere m ike ịza ajụjụ site na ntọala ihe ọmụma anyị — dịka imepe akaụntụ, ịtọgharị okwuntughe, kaadị, ntụfe ego, na iwu tiketi. Jụọ m ajụjụ, ma ọ bụ ka m nyere gị aka idebanye arịrịọ nkwado.',
   },
   yo: {
     name: 'Yoruba',
     greeting: 'Pẹlẹ o — mo wà níbí láti ràn ọ́ lọ́wọ́. Báwo ni mo ṣe lè ràn ọ́ lọ́wọ́ lónìí?',
     noMatch:
       'Nkò rí ìdáhùn tó bá a mu nínú ibi ìpamọ́ ìmọ̀ wa. Mo lè ràn ọ́ lọ́wọ́ láti forúkọ ìbéèrè àtìlẹ́yìn sílẹ̀ kí ẹgbẹ́ tó yẹ lè tẹ̀lé e.',
+    help: 'Mo lè dáhùn àwọn ìbéèrè láti inú ibi ìpamọ́ ìmọ̀ wa — bíi ṣíṣí àkántì, àtúntò ọ̀rọ̀ ìwọlé, káàdì, gbígbé owó, àti òfin tíkẹ́ẹ̀tì. Bi mí léèrè, tàbí kí n ràn ọ́ lọ́wọ́ láti forúkọ ìbéèrè àtìlẹ́yìn sílẹ̀.',
   },
   ha: {
     name: 'Hausa',
     greeting: 'Sannu — ina nan don taimaka maka. Yaya zan iya taimaka maka yau?',
     noMatch:
       'Ban sami amsa mai dacewa a cikin ma’ajin ilimin mu ba. Zan iya taimaka maka shigar da buƙatar tallafi domin ƙungiyar da ta dace ta biyo baya.',
+    help: 'Zan iya amsa tambayoyi daga ma’ajin ilimin mu — kamar buɗe asusu, sake saita kalmar sirri, katunan, tura kuɗi, da ƙa’idodin tikiti. Ka yi mini tambaya, ko in taimaka maka shigar da buƙatar tallafi.',
   },
 }
 const resolveLang = (value: unknown): LangCode =>
@@ -85,6 +91,8 @@ interface SupportDocument {
 interface AssistantResponse {
   answer: string
   sources: Array<Pick<SupportDocument, 'title' | 'excerpt' | 'source'>>
+  /** Which cascade stage produced the answer (for observability). */
+  stage?: string
 }
 
 interface SupabaseEnv {
@@ -180,6 +188,92 @@ async function searchSupportDocuments(query: string, limit = 4): Promise<Support
   }))
 }
 
+// Words too common to be useful signal in keyword retrieval.
+const STOPWORDS = new Set([
+  'the', 'a', 'an', 'and', 'or', 'but', 'if', 'then', 'of', 'to', 'in', 'on', 'for', 'with', 'my',
+  'your', 'our', 'you', 'we', 'it', 'is', 'are', 'am', 'do', 'does', 'did', 'how', 'what', 'where',
+  'when', 'why', 'who', 'which', 'can', 'could', 'would', 'should', 'will', 'shall', 'may', 'might',
+  'please', 'me', 'about', 'from', 'at', 'this', 'that', 'these', 'those', 'be', 'been', 'being',
+  'have', 'has', 'had', 'get', 'got', 'need', 'want', 'there', 'here',
+])
+
+function tokenize(text: string): string[] {
+  return (text || '')
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((t) => t.length > 2 && !STOPWORDS.has(t))
+}
+
+/**
+ * Keyword retrieval over the Supabase `support_documents` table — a
+ * no-embeddings emulation of vector search. Fetches the (small) document set
+ * and ranks by token overlap (title weighted highest). Used when vector search
+ * is unavailable (e.g. no OpenAI quota for embeddings). Throws on a Supabase
+ * error so the caller can fall through.
+ */
+async function keywordSearchSupportDocuments(query: string, limit = 4): Promise<SupportDocument[]> {
+  const supabase = readSupabaseEnv()
+  if (!supabase) return []
+  const tokens = tokenize(query)
+  if (!tokens.length) return []
+
+  const url = `${supabase.url}/rest/v1/support_documents?select=id,title,excerpt,content,source&limit=500`
+  const res = await fetch(url, {
+    headers: { apikey: supabase.key, Authorization: `Bearer ${supabase.key}` },
+  })
+  if (!res.ok) {
+    const detail = await res.text().catch(() => '')
+    throw new Error(`Supabase keyword fetch failed (${res.status}) ${detail.slice(0, 200)}`)
+  }
+  const rows = (await res.json()) as Array<Record<string, unknown>>
+
+  const scored = rows
+    .map((row) => {
+      const title = String(row.title ?? '')
+      const excerpt = String(row.excerpt ?? '')
+      const content = String(row.content ?? '')
+      const titleTokens = new Set(tokenize(title))
+      const bodyTokens = new Set(tokenize(`${excerpt} ${content}`))
+      let score = 0
+      for (const t of tokens) {
+        if (titleTokens.has(t)) score += 3 // a title hit is a strong signal
+        if (bodyTokens.has(t)) score += 1
+      }
+      return {
+        score,
+        doc: {
+          id: String(row.id ?? ''),
+          title,
+          excerpt: excerpt || content.slice(0, 280),
+          content,
+          source: row.source ? String(row.source) : undefined,
+        } as SupportDocument,
+      }
+    })
+    .filter((s) => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+
+  return scored.slice(0, limit).map((s) => s.doc)
+}
+
+/**
+ * Extractive "local RAG" generation — build an answer from retrieved documents
+ * WITHOUT an LLM. Used when OpenAI generation is unavailable (no key / no
+ * quota). Returns the most relevant document's content, trimmed at a sentence
+ * boundary, so the user gets the real knowledge-base answer instead of a canned
+ * "no match". The retrieved documents are still returned as `sources`.
+ */
+function localRagAnswer(docs: SupportDocument[]): string {
+  const top = docs[0]
+  if (!top) return ''
+  const body = (top.content || top.excerpt || '').trim()
+  if (!body) return ''
+  if (body.length <= 700) return body
+  const clipped = body.slice(0, 700)
+  const lastStop = Math.max(clipped.lastIndexOf('. '), clipped.lastIndexOf('\n'), clipped.lastIndexOf('! '))
+  return `${(lastStop > 250 ? clipped.slice(0, lastStop + 1) : clipped).trim()} …`
+}
+
 async function createAssistantAnswer(
   query: string,
   docs: SupportDocument[],
@@ -243,33 +337,88 @@ export async function assistantRoutes(app: FastifyInstance): Promise<void> {
     if (!message) return reply.code(400).send({ error: 'Message is required.' })
     const lang = resolveLang(req.body?.language)
 
-    // Quick canned greeting handling: respond immediately (in the selected
-    // language) for a BARE salutation — the whole message is just a greeting —
-    // without invoking embeddings / Supabase / OpenAI. Anchored to the full
-    // string so a real question that merely starts with "hello"
-    // (e.g. "hello how do I reset password") still goes through the search.
+    // Retrieval + generation cascade with native-language translation. The
+    // knowledge base is English, so a native question (Igbo/Yorùbá/Hausa) is
+    // translated to English for retrieval, and the English answer is translated
+    // back to the selected language for output (spoken or written):
+    //   0. Translate query -> English (via deep_translator/Google)
+    //   1. Early conversational fallback  — greeting / help intents
+    //   2. Retrieval: Supabase vector  →  Supabase keyword (emulated vector)
+    //   3. Generation: OpenAI LLM  →  local extractive RAG (from the excerpts)
+    //      → translate the answer back to `lang`
+    //   4. Generic fallback            — offer to log a request (already localized)
+
+    // 0. Native question -> English for retrieval. English passes through.
+    const englishQuery = lang === 'en' ? message : (await translateText(message, lang, 'en')).text
+    if (lang !== 'en') {
+      app.log.info(`Assistant: translated query [${lang}->en] "${englishQuery.slice(0, 80)}"`)
+    }
+    // Render a final English answer in the user's selected language.
+    const toUserLang = async (englishText: string): Promise<string> =>
+      lang === 'en' ? englishText : (await translateText(englishText, 'en', lang)).text
+
+    // 1. Early conversational fallback for a BARE greeting or help intent, run
+    // on the English query so native greetings/help are caught too.
     const greetingRe = /^(hi+|hello|hey+|hiya|yo|greetings|are you there|good\s+(?:morning|afternoon|evening))[\s!.,?]*$/i
-    if (greetingRe.test(message)) {
-      return reply.send({ answer: LOCALES[lang].greeting, sources: [] })
+    if (greetingRe.test(englishQuery)) {
+      return reply.send({ answer: LOCALES[lang].greeting, sources: [], stage: 'conversational' })
+    }
+    const helpRe = /^(help|menu|options|what can you (do|help( me)?( with)?)|how (can|do) you help( me)?)[\s!.,?]*$/i
+    if (helpRe.test(englishQuery)) {
+      return reply.send({ answer: LOCALES[lang].help, sources: [], stage: 'conversational' })
     }
 
-    // If the RAG backend isn't configured (no OpenAI key or no Supabase), degrade
-    // gracefully to the localized fallback (which offers to log a request) with a
-    // 200 instead of erroring — the chat widget stays usable without those keys.
-    if (!readOpenAIEnv() || !readSupabaseEnv()) {
-      app.log.info('Assistant not fully configured (OpenAI/Supabase) — returning fallback answer')
-      return reply.send({ answer: LOCALES[lang].noMatch, sources: [] })
+    const supabase = readSupabaseEnv()
+    const openai = readOpenAIEnv()
+
+    // 2. Retrieval (English query) — Supabase vector first, then keyword emulation.
+    let docs: SupportDocument[] = []
+    let retrieval = 'none'
+    if (openai && supabase) {
+      try {
+        docs = await searchSupportDocuments(englishQuery, 4)
+        if (docs.length) retrieval = 'supabase-vector'
+      } catch (err) {
+        app.log.warn(`Vector retrieval unavailable, trying keyword: ${(err as Error).message}`)
+      }
+    }
+    if (!docs.length && supabase) {
+      try {
+        docs = await keywordSearchSupportDocuments(englishQuery, 4)
+        if (docs.length) retrieval = 'supabase-keyword'
+      } catch (err) {
+        app.log.warn(`Keyword retrieval failed: ${(err as Error).message}`)
+      }
     }
 
-    try {
-      const docs = await searchSupportDocuments(message, 4)
-      const answer = await createAssistantAnswer(message, docs, req.body?.history ?? [], lang)
-      const sources = docs.map((doc) => ({ title: doc.title, excerpt: doc.excerpt, source: doc.source }))
-      return reply.send({ answer, sources } as AssistantResponse)
-    } catch (err) {
-      app.log.warn(`Assistant request failed: ${(err as Error).message}`)
-      return reply.code(502).send({ error: 'Assistant unavailable. Please try again later.' })
+    const sources = docs.map((doc) => ({ title: doc.title, excerpt: doc.excerpt, source: doc.source }))
+
+    // 3. Generation over the retrieved documents.
+    if (docs.length) {
+      // 3a. OpenAI LLM generation (best) — the model answers directly in `lang`.
+      if (openai) {
+        try {
+          const answer = await createAssistantAnswer(englishQuery, docs, req.body?.history ?? [], lang)
+          if (answer && answer.trim()) {
+            app.log.info(`Assistant: openai generation over ${retrieval}`)
+            return reply.send({ answer, sources, stage: `openai/${retrieval}` } as AssistantResponse)
+          }
+        } catch (err) {
+          app.log.warn(`OpenAI generation failed, using local RAG: ${(err as Error).message}`)
+        }
+      }
+      // 3b. Local extractive RAG — English excerpt, translated back to `lang`.
+      const localEnglish = localRagAnswer(docs)
+      if (localEnglish) {
+        const answer = await toUserLang(localEnglish)
+        app.log.info(`Assistant: local-rag generation over ${retrieval} [->${lang}]`)
+        return reply.send({ answer, sources, stage: `local-rag/${retrieval}` } as AssistantResponse)
+      }
     }
+
+    // 4. Generic fallback — nothing matched; offer to log a request (localized).
+    app.log.info('Assistant: generic fallback (no knowledge-base match)')
+    return reply.send({ answer: LOCALES[lang].noMatch, sources: [], stage: 'generic' } as AssistantResponse)
   })
 
   // Text-to-speech: proxy the reply to the Python TTS engine (espeak-ng +
@@ -284,4 +433,35 @@ export async function assistantRoutes(app: FastifyInstance): Promise<void> {
     const result = await synthesizeSpeech(text, req.body?.language)
     return reply.send(result)
   })
+
+  // Speech-to-text: transcribe a recorded voice clip with OpenAI (Whisper) via
+  // src/stt.ts. More reliable than the browser's Web Speech API — cross-browser
+  // and it handles Yorùbá/Hausa (and auto-detects Igbo). `fallback: true` means
+  // the server couldn't transcribe (no key, timeout, API error, or no speech),
+  // and the client should fall back to browser recognition or ask the user to
+  // type. Public, like the assistant route. The clip arrives base64-encoded in
+  // JSON to avoid a multipart dependency; the global 30MB body limit applies.
+  app.post(
+    '/stt',
+    async (
+      req: FastifyRequest<{ Body: { audioBase64?: string; mime?: string; language?: string; partial?: boolean } }>,
+      reply: FastifyReply,
+    ) => {
+      const audioBase64 = String(req.body?.audioBase64 ?? '')
+      if (!audioBase64) return reply.code(400).send({ error: 'Audio is required.' })
+      const partial = req.body?.partial === true
+      const result = await transcribeAudio(
+        audioBase64,
+        req.body?.mime ? String(req.body.mime) : undefined,
+        req.body?.language ? String(req.body.language) : undefined,
+        partial,
+      )
+      // Log WHY a FINAL transcription couldn't run (e.g. OpenAI quota/429) so
+      // operators can see it — partials are noisy and expected to be ungated.
+      if (!partial && result.fallback && result.warning) {
+        app.log.warn(`STT fallback: ${result.warning}`)
+      }
+      return reply.send(result)
+    },
+  )
 }

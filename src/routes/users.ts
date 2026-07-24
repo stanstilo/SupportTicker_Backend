@@ -5,11 +5,12 @@ import {
   getUserSummary,
   listAssignable,
   listUsers,
+  setUserAvailability,
   setUserDepartment,
   setUserRole,
 } from '../repo'
 import { requireRole } from '../auth'
-import { SERVICE_LINES, USER_ROLES, type ServiceLine, type UserRole } from '../types'
+import { AVAILABILITIES, SERVICE_LINES, USER_ROLES, type Availability, type ServiceLine, type UserRole } from '../types'
 
 /**
  * User & role administration (RBAC). Reading the roster is open to admins and
@@ -31,6 +32,21 @@ export async function userRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(400).send({ error: 'A valid serviceLine query is required.' })
     }
     return listAssignable(sl as ServiceLine)
+  })
+
+  // An agent sets their OWN availability (available|busy|offline). Self-service —
+  // any authenticated user. Drives auto-assignment: only 'available' agents
+  // receive (and keep) auto-assigned requests; 'busy'/'offline' are skipped and,
+  // when a department has none available, the request escalates to the admin.
+  app.patch<{ Body: { availability?: string } }>('/me/availability', async (req, reply) => {
+    const av = req.body?.availability
+    if (!av || !AVAILABILITIES.includes(av as Availability)) {
+      return reply.code(400).send({ error: `availability must be one of: ${AVAILABILITIES.join(', ')}.` })
+    }
+    const updated = setUserAvailability(req.user.sub, av as Availability)
+    if (!updated) return reply.code(404).send({ error: 'User not found.' })
+    app.log.info(`Availability: ${req.user.email} → ${av}`)
+    return updated
   })
 
   // Set (or clear) a user's service department — admins and super admins.

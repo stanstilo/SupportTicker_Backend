@@ -31,12 +31,30 @@ import {
   dataFabricUpdate,
   isOrchestratorConfigured,
 } from '../orchestrator'
+import { adminEmail, notifyRequesterOfChange, sendEscalationEmail } from '../mailer'
+import { availableAssignees } from '../escalation'
 import { canDeleteTicket } from '../permissions'
 import { isAdminRole } from '../types'
 
 export async function ticketRoutes(app: FastifyInstance): Promise<void> {
   // Every ticket route requires a valid session.
   app.addHook('preHandler', app.authenticate)
+
+  // Email the requester about a status/assignment change — fire-and-forget so
+  // it never blocks the response. Skipped when the requester made the change
+  // themselves (no point emailing someone about their own action).
+  const notifyRequester = (
+    ticket: Awaited<ReturnType<typeof setStatus>>,
+    kind: 'status' | 'assignment',
+    actor: string,
+  ): void => {
+    if (!ticket || ticket.requester === actor) return
+    void notifyRequesterOfChange(ticket, { kind, actor })
+      .then((sent) => {
+        if (sent) app.log.info(`Ticket #${ticket.id}: ${kind} update emailed to requester ${ticket.requesterEmail}`)
+      })
+      .catch(() => {})
+  }
 
   app.get('/', async () => listTickets())
 
@@ -86,6 +104,22 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
       { submittedBy: req.user.email, onBehalf, assignToMe, assignee },
     )
 
+    // Escalate on initiation: a brand-new request with no owner chosen at intake
+    // AND no available assignee in its department → email the admin so it isn't
+    // left unowned. Best-effort; never blocks creation.
+    if (!ticket.assignee && availableAssignees(ticket.serviceLine).length === 0) {
+      void sendEscalationEmail(
+        `New request #${ticket.id} has no available assignee (${ticket.serviceLine})`,
+        `Request #${ticket.id} "${ticket.subject}" (${ticket.priority} priority) was submitted, ` +
+          `but there is no available assignee in the ${ticket.serviceLine} department.\n\n` +
+          `Please assign an owner or add an agent to that department.`,
+      )
+        .then((sent) => {
+          if (sent) app.log.info(`Ticket #${ticket.id}: no ${ticket.serviceLine} assignee → escalated to ${adminEmail()}`)
+        })
+        .catch(() => {})
+    }
+
     // App-triggered queue enqueue is disabled because the HelixNewTickets
     // queue path is not being used. The backend still uses direct UiPath
     // orchestration for Data Fabric insert/update.
@@ -109,7 +143,9 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
           app.log.info(`Ticket #${ticket.id} stored in Data Fabric (${recordId})`)
           const owner = await assignByDepartment(recordId, ticket.serviceLine)
           if (owner) {
-            setAssignee(ticket.id, owner, 'UiPath')
+            const assigned = setAssignee(ticket.id, owner, 'UiPath')
+            // First owner chosen for a new request — let the requester know.
+            notifyRequester(assigned, 'assignment', 'the support team')
             await dataFabricUpdate(recordId, owner, 'pending')
             app.log.info(`Ticket #${ticket.id} auto-assigned to ${owner} (${ticket.serviceLine})`)
           } else {
@@ -134,6 +170,8 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
       return reply.code(403).send({ error: 'Only the assigned owner or an admin can change the status.' })
     }
     const updated = setStatus(existing.id, status, req.user.name)
+    // Let the requester know their request moved (e.g. resolved, in progress).
+    notifyRequester(updated, 'status', req.user.name)
     // Mirror the decision back to the Data Fabric record (best-effort).
     if (updated?.dfRecordId && isOrchestratorConfigured()) {
       void dataFabricUpdate(updated.dfRecordId, updated.assignee ?? '', status)
@@ -170,7 +208,11 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
     if (assignee && !listAssignable(existing.serviceLine).some((m) => m.name === assignee)) {
       return reply.code(422).send({ error: `${assignee} is not a member of the ${existing.serviceLine} department.` })
     }
-    return setAssignee(existing.id, assignee, req.user.name)
+    const updated = setAssignee(existing.id, assignee, req.user.name)
+    // Tell the requester who now owns their request (setAssignee also updates
+    // the status, which the email reflects).
+    notifyRequester(updated, 'assignment', req.user.name)
+    return updated
   })
 
   app.delete<{ Params: { id: string } }>('/:id', async (req, reply) => {
@@ -199,7 +241,9 @@ export async function ticketRoutes(app: FastifyInstance): Promise<void> {
       // System-driven lifecycle: the assignee's first work-note on a still-pending
       // request means they've started — auto-advance it to In progress.
       if (ticket.assignee === req.user.name && ticket.status === 'pending') {
-        return setStatus(ticket.id, 'in_progress', req.user.name)
+        const advanced = setStatus(ticket.id, 'in_progress', req.user.name)
+        notifyRequester(advanced, 'status', req.user.name)
+        return advanced
       }
       return ticket
     },

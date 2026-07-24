@@ -183,6 +183,11 @@ export const USER_ROLES: UserRole[] = ['agent', 'admin', 'superadmin']
 export const isAdminRole = (role: UserRole): boolean => role === 'admin' || role === 'superadmin'
 export const canManageRoles = (role: UserRole): boolean => role === 'superadmin'
 
+/** An agent's self-set availability — drives request auto-assignment. Only
+ *  'available' agents are eligible to receive/keep auto-assigned requests. */
+export type Availability = 'available' | 'busy' | 'offline'
+export const AVAILABILITIES: Availability[] = ['available', 'busy', 'offline']
+
 export interface AuthUser {
   name: string
   email: string
@@ -192,6 +197,10 @@ export interface AuthUser {
   /** The service department this user belongs to (drives request assignment).
    *  Null for management accounts or users onboarded before departments. */
   department: ServiceLine | null
+  /** Agent-set availability; only 'available' agents receive auto-assignment. */
+  availability: Availability
+  /** True when the user has confirmed their email address. */
+  emailVerified: boolean
   createdAt: string
 }
 
