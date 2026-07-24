@@ -20,4 +20,8 @@ ENV PHONEMIZER_ESPEAK_LIBRARY=/usr/lib/x86_64-linux-gnu/libespeak-ng.so.1
 ENV TTS_AUDIO_FORMAT=wav
 
 EXPOSE 8081
-CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8081"]
+# Bind the port the platform injects ($PORT, e.g. Render), falling back to 8081
+# for local runs. Shell form so ${PORT} is expanded at container start. Without
+# this the app listens on 8081 while Render health-checks $PORT → the router
+# reports "no-server" and the service is unreachable.
+CMD ["sh", "-c", "uvicorn app:app --host 0.0.0.0 --port ${PORT:-8081}"]

@@ -25,6 +25,12 @@ interface LoginBody {
   email?: string
   password?: string
 }
+interface FirebaseBody {
+  idToken?: string
+  name?: string
+  company?: string
+  department?: string | null
+}
 
 export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post<{ Body: SignupBody }>('/signup', async (req, reply) => {
@@ -75,7 +81,7 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
    * Support Ticker user and issue OUR app JWT — so every downstream API keeps working exactly
    * as it does for password logins. Federated identity in, app session out.
    */
-  app.post<{ Body: { idToken?: string } }>('/firebase', async (req, reply) => {
+  app.post<{ Body: FirebaseBody }>('/firebase', async (req, reply) => {
     if (!isFirebaseConfigured()) {
       return reply.code(503).send({ error: 'Social sign-in is not enabled on the server.' })
     }
@@ -96,9 +102,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
     const digits = identity.phoneNumber?.replace(/\D/g, '')
     const email = identity.email ?? (digits ? `${digits}@phone.${domain}` : `${identity.uid}@firebase.${domain}`)
     const displayName =
+      req.body.name?.trim() ||
       identity.name?.trim() ||
       (identity.email ? identity.email.split('@')[0] : undefined) ||
       (identity.phoneNumber ? `Member ${digits?.slice(-4)}` : `${process.env.ORG_NAME ?? 'GifsonServices'} Member`)
+    const company = req.body.company?.trim() || 'Personal'
+    const department = req.body.department || null
 
     let user = findUserByEmail(email)
     if (!user) {
@@ -106,10 +115,12 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
       // log in via the password route (they always come through Firebase).
       user = createUser({
         name: displayName,
-        company: 'Personal',
+        company,
         email,
         passwordHash: await hashPassword(randomUUID()),
         avatarColor: avatarColor(displayName),
+        department,
+        emailVerified: !!identity.emailVerified,
       })
     }
 
